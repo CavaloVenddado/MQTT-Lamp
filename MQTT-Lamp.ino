@@ -108,6 +108,10 @@ void setup() {
   pinMode(Rele2, OUTPUT);
   pinMode(Rele3, OUTPUT);
   pinMode(Rele4, OUTPUT);
+  digitalWrite(Rele1, HIGH);
+  digitalWrite(Rele2, HIGH);
+  digitalWrite(Rele3, HIGH);
+  digitalWrite(Rele4, HIGH);
 }
 
 void loop() {
