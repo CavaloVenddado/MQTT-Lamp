@@ -1,3 +1,13 @@
+/*
+ * CAVALO VENDADO'S MQTT IOT LAMP CONTROLLER
+ * PART OF OUR AUTOMATION PROJECT.
+ * 
+ * THIS SOFTWARE IS BASED OFF OF ESP8266 MQTT EXAMPLE
+ * DEVELOPED BY THE CAVALO VENDADO ROBOTICS TEAM
+ * COLÉGIO MARISTA MEDIANEIRA ERECHIM-RS FIRST NUMBER: 16786
+ */
+
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h> 
 const int Bot1 = 12;
@@ -80,12 +90,14 @@ void reconnect() {
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str())) {
+      //always subscribe to topics after connecting to mqtt server.
       Serial.println("connected");
       client.subscribe("/lamps/0");
       client.subscribe("/lamps/1");
       client.subscribe("/lamps/2");
       client.subscribe("/lamps/3");
     } else {
+      //print error code
       Serial.print("failed, rc=");
       Serial.print(client.state());
       Serial.println(" try again in 5 seconds");
@@ -100,6 +112,7 @@ void setup() {
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
+  //set all I/O modes
   pinMode(Bot1, INPUT);
   pinMode(Bot2, INPUT);
   pinMode(Bot3, INPUT);
@@ -108,6 +121,7 @@ void setup() {
   pinMode(Rele2, OUTPUT);
   pinMode(Rele3, OUTPUT);
   pinMode(Rele4, OUTPUT);
+  //turn off all lights.
   digitalWrite(Rele1, HIGH);
   digitalWrite(Rele2, HIGH);
   digitalWrite(Rele3, HIGH);
@@ -119,12 +133,15 @@ void loop() {
   if (!conneceted) {
     reconnect();
   }
-  pinMode(BUILTIN_LED, !conneceted);
+  pinMode(BUILTIN_LED, !conneceted); //use builtin LED as an indicator. Turns on when connected.
   client.loop();
+
+  
   bool anyBtn = (digitalRead(Bot1) or digitalRead(Bot2) or digitalRead(Bot3) or digitalRead(Bot4));
-  if(anyBtn != LastAnyBtn and anyBtn == true){
+  if(anyBtn != LastAnyBtn and anyBtn){ //if any button is pressed
     unsigned long interruptTime = millis();
-    if (interruptTime - lastInterrupt > 200){
+    if (interruptTime - lastInterrupt > 200){ //if not pressed within 200ms
+      //turn respective lamp on/off
       if(digitalRead(Bot1)){
         char outmsg[]={!lampstates[0] + 48};
         client.publish("/lamps/0", outmsg);
