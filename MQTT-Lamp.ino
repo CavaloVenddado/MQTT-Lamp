@@ -8,24 +8,25 @@
  */
 
 
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 #include <PubSubClient.h> 
-const int Bot1 = 12;
-const int Bot2 = 5;
-const int Bot3 = 4;
-const int Bot4 = 13;
+const int LED = 2;
+const int Bot1 = 26;
+const int Bot2 = 25;
+const int Bot3 = 33;
+const int Bot4 = 32;
 
-const int Rele1 = 14;
-const int Rele2 = 16;
-const int Rele3 = 0;
-const int Rele4 = 15;
+const int Rele1 = 13;
+const int Rele2 = 18;
+const int Rele3 = 14;
+const int Rele4 = 27;
 
 const char* ssid = "roboticawifi2.4g";
 const char* password = "roboticamedia123";
 const char* mqtt_server = "192.168.1.12";
 
 bool lampstates[4] = {0,0,0,0};
-
+byte outmsg[1]={0};
 static unsigned long lastInterrupt = 0;
 
 WiFiClient espClient;
@@ -64,19 +65,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print(topic);
   Serial.println("] ");
   if(strcmp(topic, "/lamps/0") == 0){
-    lampstates[0] = payload[0] - 48;
+    lampstates[0] = payload[0];
     digitalWrite(Rele1, !lampstates[0]);
   }
   if(strcmp(topic, "/lamps/1") == 0){
-    lampstates[1] = payload[0] - 48;
+    lampstates[1] = payload[0];
     digitalWrite(Rele2, !lampstates[1]);
   }
   if(strcmp(topic, "/lamps/2") == 0){
-    lampstates[2] = payload[0] - 48;
+    lampstates[2] = payload[0];
     digitalWrite(Rele3, !lampstates[2]);
   }
   if(strcmp(topic, "/lamps/3") == 0){
-    lampstates[3] = payload[0] - 48;
+    lampstates[3] = payload[0];
     digitalWrite(Rele4, !lampstates[3]);
   }
 }
@@ -86,7 +87,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Create a random client ID
-    String clientId = "ESP8266Client-door";
+    String clientId = "ESP-door-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
     if (client.connect(clientId.c_str())) {
@@ -107,16 +108,16 @@ void reconnect() {
   }
 }
 void setup() {
-  pinMode(BUILTIN_LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
+  pinMode(LED, OUTPUT);     // Initialize the BUILTIN_LED pin as an output
   Serial.begin(115200);
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
   //set all I/O modes
-  pinMode(Bot1, INPUT);
-  pinMode(Bot2, INPUT);
-  pinMode(Bot3, INPUT);
-  pinMode(Bot4, INPUT);
+  pinMode(Bot1, INPUT_PULLUP);
+  pinMode(Bot2, INPUT_PULLUP);
+  pinMode(Bot3, INPUT_PULLUP);
+  pinMode(Bot4, INPUT_PULLUP);
   pinMode(Rele1, OUTPUT);
   pinMode(Rele2, OUTPUT);
   pinMode(Rele3, OUTPUT);
@@ -130,33 +131,37 @@ void setup() {
 
 void loop() {
   bool conneceted = client.connected();
+  digitalWrite(LED, conneceted); //use builtin LED as an indicator. Turns on when connected.
   if (!conneceted) {
     reconnect();
   }
-  pinMode(BUILTIN_LED, !conneceted); //use builtin LED as an indicator. Turns on when connected.
   client.loop();
-
+  bool btn1 = !digitalRead(Bot1);
+  bool btn2 = !digitalRead(Bot2);
+  bool btn3 = !digitalRead(Bot3);
+  bool btn4 = !digitalRead(Bot4);
   
-  bool anyBtn = (digitalRead(Bot1) or digitalRead(Bot2) or digitalRead(Bot3) or digitalRead(Bot4));
+  bool anyBtn = (btn1 or btn2 or btn3 or btn4);
+  //Serial.println(anyBtn);
   if(anyBtn != LastAnyBtn and anyBtn){ //if any button is pressed
     unsigned long interruptTime = millis();
-    if (interruptTime - lastInterrupt > 200){ //if not pressed within 200ms
+    if (interruptTime - lastInterrupt > 200){ //if not pressed within 100ms
       //turn respective lamp on/off
-      if(digitalRead(Bot1)){
-        char outmsg[]={!lampstates[0] + 48};
-        client.publish("/lamps/0", outmsg);
+      if(btn1){
+        outmsg[0]={!lampstates[0]};
+        client.publish("/lamps/0", outmsg,1,true);
       }
-      if(digitalRead(Bot2)){
-        char outmsg[]={!lampstates[1] + 48};
-        client.publish("/lamps/1", outmsg);
+      if(btn2){
+        outmsg[0]={!lampstates[1]};
+        client.publish("/lamps/1", outmsg,1,true);
       }
-      if(digitalRead(Bot3)){
-        char outmsg[]={!lampstates[2] + 48};
-        client.publish("/lamps/2", outmsg);
+      if(btn3){
+        outmsg[0]={!lampstates[2]};
+        client.publish("/lamps/2", outmsg,1,true);
       }
-      if(digitalRead(Bot4)){
-        char outmsg[]={!lampstates[3] + 48};
-        client.publish("/lamps/3", outmsg);
+      if(btn4){
+        outmsg[0]={!lampstates[3]};
+        client.publish("/lamps/3", outmsg,1,true);
       }
     }
     lastInterrupt = interruptTime;
