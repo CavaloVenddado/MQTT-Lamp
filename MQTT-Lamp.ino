@@ -10,6 +10,13 @@
 
 #include <WiFi.h>
 #include <PubSubClient.h> 
+#include <Arduino.h>
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+#include <ir_Fujitsu.h>
+
+//Hardware constants
+const uint16_t kIrLed = 4;
 const int LED = 2;
 const int Bot1 = 26;
 const int Bot2 = 25;
@@ -21,6 +28,7 @@ const int Rele2 = 18;
 const int Rele3 = 14;
 const int Rele4 = 27;
 
+//network settings
 const char* ssid = "roboticawifi2.4g";
 const char* password = "roboticamedia123";
 const char* mqtt_server = "192.168.1.12";
@@ -29,15 +37,29 @@ bool lampstates[4] = {0,0,0,0};
 byte outmsg[1]={0};
 static unsigned long lastInterrupt = 0;
 
+IRFujitsuAC ac(kIrLed);
 WiFiClient espClient;
 PubSubClient client(espClient);
+//defining variables
 unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE  (50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
 bool LastAnyBtn = false;
-void setup_wifi() {
 
+void printControllerState() {
+  // Display the settings.
+  Serial.println("Fujitsu A/C remote is in the following state:");
+  Serial.printf("  %s\n", ac.toString().c_str());
+  // Display the encoded IR sequence.
+  unsigned char* ir_code = ac.getRaw();
+  Serial.print("IR Code: 0x");
+  for (uint8_t i = 0; i < ac.getStateLength(); i++)
+    Serial.printf("%02X", ir_code[i]);
+  Serial.println();
+}
+
+void setup_wifi() {
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
@@ -59,7 +81,14 @@ void setup_wifi() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 }
-
+void sendac(){
+  #if SEND_FUJITSU_AC
+  ac.send();
+  #else  // SEND_FUJITSU_AC
+  Serial.println("Can't send because SEND_FUJITSU_AC has been disabled.");
+  #endif  // SEND_FUJITSU_AC
+  printControllerState();
+}
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -80,6 +109,18 @@ void callback(char* topic, byte* payload, unsigned int length) {
     lampstates[3] = payload[0];
     digitalWrite(Rele4, !lampstates[3]);
   }
+  if(strcmp(topic, "/ac1/temp") == 0){
+    ac.setTemp(payload[0]);  // set temperature as first byte in payload
+    sendac();
+  }
+  if(strcmp(topic, "/ac1/pwr") == 0){
+    if(payload[0] == 1){
+      ac.setCmd(kFujitsuAcCmdTurnOn);
+    }else{
+      ac.setCmd(kFujitsuAcCmdTurnOff);
+    }
+    sendac();
+  }
 }
 
 void reconnect() {
@@ -97,6 +138,7 @@ void reconnect() {
       client.subscribe("/lamps/1");
       client.subscribe("/lamps/2");
       client.subscribe("/lamps/3");
+      client.subscribe("/ac1/temp");
     } else {
       //print error code
       Serial.print("failed, rc=");
@@ -127,6 +169,21 @@ void setup() {
   digitalWrite(Rele2, HIGH);
   digitalWrite(Rele3, HIGH);
   digitalWrite(Rele4, HIGH);
+
+  ac.begin();
+  Serial.begin(115200);
+  delay(200);
+
+  // Set up what we want to send. See ir_Fujitsu.cpp for all the options.
+  ac.setModel(ARRAH2E);
+  Serial.println("Default state of the remote.");
+  printControllerState();
+  // See `fujitsu_ac_remote_model_t` in `ir_Fujitsu.h` for a list of models.
+  ac.setSwing(kFujitsuAcSwingOff);
+  ac.setMode(kFujitsuAcModeCool);
+  ac.setFanSpeed(kFujitsuAcFanHigh);
+  ac.setTemp(24);  // 24C
+  ac.setCmd(kFujitsuAcCmdTurnOn);
 }
 
 void loop() {
