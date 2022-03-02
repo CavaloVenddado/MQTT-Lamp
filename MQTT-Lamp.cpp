@@ -17,12 +17,14 @@
 
 //Hardware constants
 const uint16_t kIrLed = 4;
+const int DoorBtn = 35;
 const int LED = 2;
 const int Bot1 = 26;
 const int Bot2 = 25;
 const int Bot3 = 33;
 const int Bot4 = 32;
 
+const int DoorRelay = 19;
 const int Rele1 = 13;
 const int Rele2 = 18;
 const int Rele3 = 14;
@@ -42,6 +44,7 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 //defining variables
 unsigned long lastMsg = 0;
+unsigned long interruptTime = 0;
 #define MSG_BUFFER_SIZE  (50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
@@ -108,6 +111,11 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if(strcmp(topic, "/lamps/3") == 0){
     lampstates[3] = payload[0];
     digitalWrite(Rele4, !lampstates[3]);
+  }
+  if(strcmp(topic, "/door/open") == 0){
+    digitalWrite(DoorRelay, HIGH);
+    delay(2000);
+    digitalWrite(DoorRelay, LOW);
   }
   if(strcmp(topic, "/ac1/temp") == 0){
     ac.setTemp(payload[0]);  // set temperature as first byte in payload
@@ -197,29 +205,33 @@ void loop() {
   bool btn2 = !digitalRead(Bot2);
   bool btn3 = !digitalRead(Bot3);
   bool btn4 = !digitalRead(Bot4);
-  
-  bool anyBtn = (btn1 or btn2 or btn3 or btn4);
+  bool btnDoor = !digitalRead(DoorBtn);
+
+  bool anyBtn = (btn1 or btn2 or btn3 or btn4 or btnDoor);
   //Serial.println(anyBtn);
   if(anyBtn != LastAnyBtn and anyBtn){ //if any button is pressed
-    unsigned long interruptTime = millis();
-    if (interruptTime - lastInterrupt > 200){ //if not pressed within 100ms
-      //turn respective lamp on/off
-      if(btn1){
-        outmsg[0]={!lampstates[0]};
-        client.publish("/lamps/0", outmsg,1,true);
-      }
-      if(btn2){
-        outmsg[0]={!lampstates[1]};
-        client.publish("/lamps/1", outmsg,1,true);
-      }
-      if(btn3){
-        outmsg[0]={!lampstates[2]};
-        client.publish("/lamps/2", outmsg,1,true);
-      }
-      if(btn4){
-        outmsg[0]={!lampstates[3]};
-        client.publish("/lamps/3", outmsg,1,true);
-      }
+    interruptTime = millis();
+  }
+  if (millis() - interruptTime  > 100 and interruptTime - lastInterrupt > 500){ //if not pressed within 100ms
+    //turn respective lamp on/off
+    if(btn1){
+      outmsg[0]={!lampstates[0]};
+      client.publish("/lamps/0", outmsg,1,true);
+    }
+    if(btn2){
+      outmsg[0]={!lampstates[1]};
+      client.publish("/lamps/1", outmsg,1,true);
+    }
+    if(btn3){
+      outmsg[0]={!lampstates[2]};
+      client.publish("/lamps/2", outmsg,1,true);
+    }
+    if(btn4){
+      outmsg[0]={!lampstates[3]};
+      client.publish("/lamps/3", outmsg,1,true);
+    }
+    if(btnDoor){
+      client.publish("/door/open", "0");
     }
     lastInterrupt = interruptTime;
   }
