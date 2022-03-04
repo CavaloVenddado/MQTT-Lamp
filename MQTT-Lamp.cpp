@@ -146,7 +146,8 @@ void reconnect() {
       client.subscribe("/lamps/1");
       client.subscribe("/lamps/2");
       client.subscribe("/lamps/3");
-      client.subscribe("/ac1/temp");
+      //client.subscribe("/ac1/temp");
+      client.subscribe("/door/open");
     } else {
       //print error code
       Serial.print("failed, rc=");
@@ -168,6 +169,8 @@ void setup() {
   pinMode(Bot2, INPUT_PULLUP);
   pinMode(Bot3, INPUT_PULLUP);
   pinMode(Bot4, INPUT_PULLUP);
+  pinMode(DoorBtn, INPUT_PULLUP);
+  pinMode(DoorRelay, OUTPUT);
   pinMode(Rele1, OUTPUT);
   pinMode(Rele2, OUTPUT);
   pinMode(Rele3, OUTPUT);
@@ -212,7 +215,7 @@ void loop() {
   if(anyBtn != LastAnyBtn and anyBtn){ //if any button is pressed
     interruptTime = millis();
   }
-  if (millis() - interruptTime  > 100 and interruptTime - lastInterrupt > 500){ //if not pressed within 100ms
+  if (millis() - interruptTime  > 20 and interruptTime - lastInterrupt > 500){ //if not pressed within 100ms
     //turn respective lamp on/off
     if(btn1){
       outmsg[0]={!lampstates[0]};
