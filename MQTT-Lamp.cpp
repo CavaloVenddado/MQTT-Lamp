@@ -113,9 +113,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     digitalWrite(Rele4, !lampstates[3]);
   }
   if(strcmp(topic, "/door/open") == 0){
-    digitalWrite(DoorRelay, HIGH);
-    delay(2000);
     digitalWrite(DoorRelay, LOW);
+    delay(2000);
+    digitalWrite(DoorRelay, HIGH);
   }
   if(strcmp(topic, "/ac1/temp") == 0){
     ac.setTemp(payload[0]);  // set temperature as first byte in payload
@@ -181,6 +181,8 @@ void setup() {
   digitalWrite(Rele3, HIGH);
   digitalWrite(Rele4, HIGH);
 
+  digitalWrite(DoorRelay, HIGH);
+
   ac.begin();
   Serial.begin(115200);
   delay(200);
@@ -216,25 +218,50 @@ void loop() {
     interruptTime = millis();
   }
   if (millis() - interruptTime  > 20 and interruptTime - lastInterrupt > 500){ //if not pressed within 100ms
-    //turn respective lamp on/off
-    if(btn1){
-      outmsg[0]={!lampstates[0]};
-      client.publish("/lamps/0", outmsg,1,true);
-    }
-    if(btn2){
-      outmsg[0]={!lampstates[1]};
-      client.publish("/lamps/1", outmsg,1,true);
-    }
-    if(btn3){
-      outmsg[0]={!lampstates[2]};
-      client.publish("/lamps/2", outmsg,1,true);
-    }
-    if(btn4){
-      outmsg[0]={!lampstates[3]};
-      client.publish("/lamps/3", outmsg,1,true);
-    }
-    if(btnDoor){
-      client.publish("/door/open", "0");
+    if(conneceted){
+      //turn respective lamp on/off with MQTT
+      if(btn1){
+        outmsg[0]={!lampstates[0]};
+        client.publish("/lamps/0", outmsg,1,true);
+      }
+      if(btn2){
+        outmsg[0]={!lampstates[1]};
+        client.publish("/lamps/1", outmsg,1,true);
+      }
+      if(btn3){
+        outmsg[0]={!lampstates[2]};
+        client.publish("/lamps/2", outmsg,1,true);
+      }
+      if(btn4){
+        outmsg[0]={!lampstates[3]};
+        client.publish("/lamps/3", outmsg,1,true);
+      }
+      if(btnDoor){
+        client.publish("/door/open", "0");
+      }
+    }else{
+      //do not use mqtt for actuating
+      if(btn1){
+        lampstates[0]=!lampstates[0];
+        digitalWrite(Rele1, !lampstates[0]);
+      }
+      if(btn2){
+        lampstates[1]=!lampstates[1];
+        digitalWrite(Rele1, !lampstates[1]);
+      }
+      if(btn3){
+        lampstates[2]=!lampstates[2];
+        digitalWrite(Rele1, !lampstates[2]);
+      }
+      if(btn4){
+        lampstates[3]=!lampstates[3];
+        digitalWrite(Rele1, !lampstates[3]);
+      }
+      if(btnDoor){
+        digitalWrite(DoorRelay, LOW);
+        delay(2000);
+        digitalWrite(DoorRelay, HIGH);
+      }
     }
     lastInterrupt = interruptTime;
   }
