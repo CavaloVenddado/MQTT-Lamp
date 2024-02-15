@@ -103,17 +103,17 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void tryReconnect() {
   // Loop until we're reconnected
   if(!client.connected()){
-    Serial.println("DISCONNECTED !!!--!!! attempt WIFI:");
-
+    Serial.print ("DISCONNECTED !!!--!!! attempt WIFI: ");
     if(WiFi.status() != WL_CONNECTED){
       WiFi.reconnect();
       Serial.println("no wifi");
     }else{
-      Serial.println("wi-fi OK");
+      Serial.print("wi-fi OK IP:");
+      Serial.println(WiFi.localIP());
     }
 
     Serial.print("Attempting MQTT connection...");
-    client.disconnect();
+    client.flush();
     // Create a random client ID
     String clientId = "ESP-door-";
     clientId += String(random(0xffff), HEX);
